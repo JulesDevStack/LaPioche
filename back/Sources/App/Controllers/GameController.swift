@@ -8,6 +8,7 @@ struct GameController: RouteCollection {
         games.post(use: create)
         games.get(":gameID", use: show)
         games.put(":gameID", use: edit)
+        games.delete(":gameID", use: delete)
     }
 
     @Sendable
@@ -48,6 +49,19 @@ struct GameController: RouteCollection {
         game = dto.apply(game: game)
         try await game.update(on: req.db)
         return game.toDTO()
+    }
+    
+    @Sendable
+    func delete(req: Request) async throws -> Response {
+        //get game from id
+        let game = try await findGame(req)
+        
+        if !game.loans.isEmpty {
+            throw Abort(.conflict, reason: "Game has \(game.loans.count) loans, can't be deleted")
+        }
+        
+        try await game.delete(on: req.db)
+        return Response(status: .noContent)
     }
 
     private func findGame(_ req: Request) async throws -> Game {
