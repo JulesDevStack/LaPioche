@@ -30,3 +30,6 @@ DerivedData/
 # Editors
 .vscode/
 .idea/
+
+#Webstorm plugin for xcode project
+.index-build/
