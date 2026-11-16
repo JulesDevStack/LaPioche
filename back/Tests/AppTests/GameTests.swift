@@ -52,6 +52,45 @@ final class GameTests: XCTestCase {
             })
         }
     }
+    
+    func testUpdateGameReturnsGame() async throws {
+        try await withApp { app in
+            
+            //create game
+            let game = try await createGame(app)
+            let id = try XCTUnwrap(game.id)
+            
+            //try to update
+            try await app.test(.PUT, "games/\(id)", beforeRequest: { req in
+                try req.content.encode(CreateGameDTO(
+                    title: "Updated Title", minPlayers: 3, maxPlayers: 4, durationMinutes: 90
+                ))
+            }, afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .ok)
+                let game = try res.content.decode(GameDTO.self)
+                XCTAssertEqual(game.title, "Updated Title")
+                XCTAssertTrue(game.isAvailable)
+            })
+        }
+    }
+    
+    func testUpdateGameWithZeroDurationMinutesIsRejected() async throws {
+        try await withApp { app in
+            
+            //create game
+            let game = try await createGame(app)
+            let id = try XCTUnwrap(game.id)
+            
+            //try to update
+            try await app.test(.PUT, "games/\(id)", beforeRequest: { req in
+                try req.content.encode(CreateGameDTO(
+                    title: "Updated Title", minPlayers: 3, maxPlayers: 4, durationMinutes: 0
+                ))
+            }, afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .badRequest)
+            })
+        }
+    }
 
     func testShowGame() async throws {
         try await withApp { app in

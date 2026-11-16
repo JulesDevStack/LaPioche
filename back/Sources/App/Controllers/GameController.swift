@@ -7,6 +7,7 @@ struct GameController: RouteCollection {
         games.get(use: index)
         games.post(use: create)
         games.get(":gameID", use: show)
+        games.put(":gameID", use: edit)
     }
 
     @Sendable
@@ -31,6 +32,22 @@ struct GameController: RouteCollection {
     @Sendable
     func show(req: Request) async throws -> GameDTO {
         try await findGame(req).toDTO()
+    }
+    
+    @Sendable
+    func edit(req: Request) async throws -> GameDTO {
+        //get game from id
+        var game = try await findGame(req)
+        
+        //create updatedGameDTO
+        try UpdatedGameDTO.validate(content: req)
+        let dto = try req.content.decode(UpdatedGameDTO.self)
+        try dto.ensureConsistentPlayerCount()
+
+        //apply data to existing game
+        game = dto.apply(game: game)
+        try await game.update(on: req.db)
+        return game.toDTO()
     }
 
     private func findGame(_ req: Request) async throws -> Game {
