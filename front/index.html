@@ -76,7 +76,7 @@
 
 <dialog id="game-delete-dialog">
 	<form method="dialog" id="game-delete-form" novalidate>
-		<h2 id="delete-dialog-title"></h2>
+		<h2 id="delete-game-dialog-title"></h2>
 		<input type="hidden" name="gameID" value="">
 		<p class="form-error" role="alert" hidden></p>
 		<div class="actions">
@@ -95,6 +95,19 @@
 		<div class="actions">
 			<button type="button" data-cancel>Annuler</button>
 			<button type="submit" class="primary">Enregistrer</button>
+		</div>
+	</form>
+</dialog>
+
+
+<dialog id="member-delete-dialog">
+	<form method="dialog" id="member-delete-form" novalidate>
+		<h2 id="delete-member-dialog-title"></h2>
+		<input type="hidden" name="memberID" value="">
+		<p class="form-error" role="alert" hidden></p>
+		<div class="actions">
+			<button type="button" data-cancel>Annuler</button>
+			<button type="submit" class="danger">Supprimer ce member !</button>
 		</div>
 	</form>
 </dialog>

@@ -97,7 +97,7 @@ struct MemberController: RouteCollection {
         }
         
         if !member.loans.isEmpty {
-            throw Abort(.conflict, reason: "Member has \(member.loans.count) loans, can't be deleted")
+            throw Abort(.conflict, reason: "A member with loans cannot be deleted")
         }
         
         try await member.delete(on: req.db)
