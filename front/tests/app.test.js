@@ -386,3 +386,153 @@ test("delete a member posts the form then reloads the list", async () => {
 		"Aucun·e adhérent·e pour le moment."
 	);
 });
+
+test("showing an active loan for a member", async () => {
+	const loan = {
+		id: "l1",
+		gameID: catan.id,
+		gameName: catan.title,
+		memberID: camille.id,
+		borrowedAt: new Date().toISOString(),
+		dueAt: new Date(Date.now() + 86400000 * 14).toISOString()
+	};
+
+	const app = await mountApp({
+		"GET /members": [camille],
+		[`GET /members/${camille.id}/loans`]: [loan]
+	}, {hash: "#members"});
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	app.click("Voir les emprunts", app.$("#members-list .row"));
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "GET" &&
+			call.path === `/members/${camille.id}/loans`
+	), "GET /members/:id/loans");
+
+	await waitFor(() => app.$("#loans-dialog").open);
+
+	assertEqual(
+		app.$("#loans-dialog-title").textContent,
+		`Emprunt(s) de ${camille.name}`
+	);
+
+	assertEqual(app.$$("#loans-list-dialog .row").length, 1);
+
+	const row = app.$("#loans-list-dialog .row");
+
+	assertIncludes(row.textContent, `Jeu : ${loan.gameName}`);
+	assertEqual(row.querySelector(".status").textContent, "En cours");
+});
+
+test("showing an overdue loan for a member", async () => {
+	const loan = {
+		id: "l1",
+		gameID: catan.id,
+		gameName: catan.title,
+		memberID: camille.id,
+		borrowedAt: new Date(Date.now() - 86400000 * 20).toISOString(),
+		dueAt: new Date(Date.now() - 86400000 * 6).toISOString()
+	};
+
+	const app = await mountApp({
+		"GET /members": [camille],
+		[`GET /members/${camille.id}/loans`]: [loan]
+	}, {hash: "#members"});
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	app.click("Voir les emprunts", app.$("#members-list .row"));
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "GET" &&
+			call.path === `/members/${camille.id}/loans`
+	), "GET /members/:id/loans");
+
+	await waitFor(() => app.$("#loans-dialog").open);
+
+	assertEqual(
+		app.$("#loans-dialog-title").textContent,
+		`Emprunt(s) de ${camille.name}`
+	);
+
+	assertEqual(app.$$("#loans-list-dialog .row").length, 1);
+
+	const row = app.$("#loans-list-dialog .row");
+
+	assertIncludes(row.textContent, `Jeu : ${loan.gameName}`);
+	assertEqual(row.querySelector(".status").textContent, "En retard");
+});
+
+test("showing a returned loan for a member", async () => {
+	const loan = {
+		id: "l1",
+		gameID: catan.id,
+		gameName: catan.title,
+		memberID: camille.id,
+		borrowedAt: new Date(Date.now() - 86400000 * 20).toISOString(),
+		dueAt: new Date(Date.now() - 86400000 * 6).toISOString(),
+		returnedAt: new Date().toISOString()
+	};
+
+	const app = await mountApp({
+		"GET /members": [camille],
+		[`GET /members/${camille.id}/loans`]: [loan]
+	}, {hash: "#members"});
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	app.click("Voir les emprunts", app.$("#members-list .row"));
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "GET" &&
+			call.path === `/members/${camille.id}/loans`
+	), "GET /members/:id/loans");
+
+	await waitFor(() => app.$("#loans-dialog").open);
+
+	assertEqual(
+		app.$("#loans-dialog-title").textContent,
+		`Emprunt(s) de ${camille.name}`
+	);
+
+	assertEqual(app.$$("#loans-list-dialog .row").length, 1);
+
+	const row = app.$("#loans-list-dialog .row");
+
+	const returnedDate = new Intl.DateTimeFormat("fr-FR", {
+		dateStyle: "long"
+	}).format(new Date(loan.returnedAt));
+
+	assertIncludes(row.textContent, `Jeu : ${loan.gameName}`);
+	assertEqual(
+		row.querySelector(".status").textContent,
+		`Rendu le ${returnedDate}`
+	);
+});
+
+test("showing loans for a member without any loan displays a message", async () => {
+	const app = await mountApp({
+		"GET /members": [camille],
+		[`GET /members/${camille.id}/loans`]: []
+	}, {hash: "#members"});
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	app.click("Voir les emprunts", app.$("#members-list .row"));
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "GET" &&
+			call.path === `/members/${camille.id}/loans`
+	), "GET /members/:id/loans");
+
+	await waitFor(() =>
+		app.$("#toasts").textContent.includes("Aucun emprunt pour ce membre.")
+	);
+
+	assertTrue(
+		!app.$("#loans-dialog").open,
+		"la boîte des emprunts ne doit pas s'ouvrir"
+	);
+});

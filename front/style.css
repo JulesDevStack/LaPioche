@@ -376,3 +376,11 @@ dialog:not([open]) {
     background: var(--late);
     color: var(--bg);
 }
+
+#loans-list-dialog {
+    padding: 0;
+}
+
+#loans-list-dialog li {
+    margin-bottom: 8px;
+}
