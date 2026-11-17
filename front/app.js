@@ -221,7 +221,7 @@ function memberRow(member) {
 
 	const actions = el("div", {class: "actions"});
 
-	// actions.append(button("Modifier", () => openMemberUpdateDialog(member), "info"));
+	actions.append(button("Modifier", () => openMemberUpdateDialog(member), "info"));
 	actions.append(button("Supprimer", () => openMemberDeleteDialog(member), "danger"));
 
 
@@ -262,6 +262,33 @@ async function openMemberDeleteDialog(member) {
 
 bindSubmit(deleteMemberDialog, deleteMemberForm, (data) =>
 	api.deleteMember(deleteMemberDialog.dataset.id)
+);
+
+//UPDATE MEMBER
+const updateMemberDialog = $("#member-update-dialog");
+const updateMemberForm = $("#member-update-form");
+
+async function openMemberUpdateDialog(member) {
+	console.log(member)
+	await run(async () => {
+		Object.entries(member).forEach(([key, value]) => {
+			if (updateMemberForm.elements[key]) {
+				updateMemberForm.elements[key].value = value;
+			}
+		});
+
+		showFormError(updateMemberDialog, null);
+		updateMemberDialog.showModal();
+	});
+}
+bindSubmit(updateMemberDialog, updateMemberForm, (data) => {
+	console.log("couciu")
+		return api.updateMember({
+			id: data.get("id"),
+			name: data.get("name").trim(),
+			email: data.get("email").trim()
+		})
+	}
 );
 
 refresh();
