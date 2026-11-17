@@ -55,6 +55,25 @@
 	</form>
 </dialog>
 
+
+<dialog id="game-update-dialog">
+	<form method="dialog" id="game-update-form" novalidate>
+		<input type="hidden" name="id" value="">
+		<h2>Modifier un jeu</h2>
+		<label>Titre <input name="title" required></label>
+		<div class="pair">
+			<label>Joueur·ses min <input type="number" name="minPlayers" min="1" step="1" required></label>
+			<label>Joueur·ses max <input type="number" name="maxPlayers" min="1" step="1" required></label>
+		</div>
+		<label>Durée (minutes) <input type="number" name="durationMinutes" min="1" step="1" required></label>
+		<p class="form-error" role="alert" hidden></p>
+		<div class="actions">
+			<button type="button" data-cancel>Annuler</button>
+			<button type="submit" class="primary">Mettre à jour</button>
+		</div>
+	</form>
+</dialog>
+
 <dialog id="game-delete-dialog">
 	<form method="dialog" id="game-delete-form" novalidate>
 		<h2 id="delete-dialog-title"></h2>

@@ -110,6 +110,7 @@ export const api = {
 	listGames: () => request("GET", "/games"),
 	createGame: (game) => request("POST", "/games", game),
 	deleteGame: (gameID) => request("DELETE", `/games/${gameID}`),
+	updateGame: (game) => request("PUT", `/games/${game.id}`, game),
 
 	listMembers: () => request("GET", "/members"),
 	createMember: (member) => request("POST", "/members", member),

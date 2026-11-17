@@ -105,7 +105,8 @@ function gameCard(game) {
 	const actions = el("div", {class: "actions"});
 	if (game.isAvailable) {
 		actions.append(button("Emprunter", () => openBorrowDialog(game), "primary"));
-		actions.append(button("Supprimer", () => openDeleteDialog(game), "danger"))
+		actions.append(button("Modifier", () => openUpdateDialog(game), "info"));
+		actions.append(button("Supprimer", () => openDeleteDialog(game), "danger"));
 	}
 
 	return el(
@@ -117,6 +118,8 @@ function gameCard(game) {
 	);
 }
 
+
+// ADD GAME
 const gameDialog = $("#game-dialog");
 const gameForm = $("#game-form");
 
@@ -135,6 +138,36 @@ bindSubmit(gameDialog, gameForm, (data) =>
 	}),
 );
 
+//UPDATE GAME
+const updateGameDialog = $("#game-update-dialog");
+const updateGameForm = $("#game-update-form");
+
+async function openUpdateDialog(game) {
+	await run(async () => {
+		// $("#delete-dialog-title").textContent = `Supprimer « ${game.title} »`;
+		console.log({game, updateGameForm})
+
+		Object.entries(game).forEach(([key, value]) => {
+			if (updateGameForm.elements[key]) {
+				updateGameForm.elements[key].value = value;
+			}
+		});
+
+		showFormError(updateGameDialog, null);
+		updateGameDialog.showModal();
+	});
+}
+bindSubmit(updateGameDialog, updateGameForm, (data) =>
+	api.updateGame({
+		id: data.get("id"),
+		title: data.get("title").trim(),
+		minPlayers: Number(data.get("minPlayers")),
+		maxPlayers: Number(data.get("maxPlayers")),
+		durationMinutes: Number(data.get("durationMinutes")),
+	})
+);
+
+// DELETE GAME
 const deleteGameDialog = $("#game-delete-dialog")
 const deleteGameForm = $("#game-delete-form");
 
@@ -142,7 +175,7 @@ async function openDeleteDialog(game) {
 	await run(async () => {
 		deleteGameDialog.dataset.id = game.id
 		$("#delete-dialog-title").textContent = `Supprimer « ${game.title} »`;
-		showFormError(gameDialog, null);
+		showFormError(deleteGameDialog, null);
 		deleteGameDialog.showModal();
 	});
 }
