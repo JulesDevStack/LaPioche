@@ -224,11 +224,68 @@ async function openReturnLoanDialog(game) {
 	});
 }
 bindSubmit(updateLoanDialog, updateLoanForm, (data) => {
-	api.updateLoan(updateLoanDialog.dataset.loanid)
+	return api.updateLoan(updateLoanDialog.dataset.loanid)
 	.then(() => {
 		toast(`Jeu de nouveau disponible`);
 	})
 });
+
+
+// SEE LOANS
+const loansDialog = $("#loans-dialog");
+const loansDialogTitle = $("#loans-dialog-title")
+
+async function openLoansDialog(member) {
+	await run(async () => {
+		const loans = await api.getLoans(member.id);
+		loansDialogTitle.textContent = `Emprunt(s) de ${member.name}`
+		if (loans.length === 0) {
+			toast("Aucun emprunt pour ce membre.", true);
+			return;
+		}
+		$("#loans-list-dialog").replaceChildren(...loans.map(loanRow));
+		loansDialog.showModal();
+	});
+}
+
+function loanRow(loan) {
+	console.log(loan)
+
+	const status = el("div", {class: "status"});
+
+	if (loan.returnedAt !== undefined) {
+		status.append(el("p", {}, `Rendu le ${formatDate(loan.returnedAt)}`));
+	} else if (loan.dueAt > Date.now()) {
+		status.append(el("p", {}, "En retard"));
+	} else {
+		status.append(el("p", {}, "En cours"));
+	}
+
+	return el(
+		"li",
+		{class: "row"},
+		el(
+			"div",
+			{class: "row-main"},
+			el(
+				"p",
+				{},
+				"Jeu : "+loan.gameName
+			),
+			el(
+				"p",
+				{},
+				"Emprunté le "+formatDate(loan.borrowedAt)
+			),
+			el(
+				"p",
+				{},
+				"A rendre le "+formatDate(loan.dueAt)
+			),
+			status
+		)
+	);
+}
 
 // --- Adhérent·es -----------------------------------------------------------
 
@@ -244,12 +301,26 @@ function memberRow(member) {
 
 	actions.append(button("Modifier", () => openMemberUpdateDialog(member), "info"));
 	actions.append(button("Supprimer", () => openMemberDeleteDialog(member), "danger"));
-
+	actions.append(button("Voir les emprunts", () => openLoansDialog(member), "primary"));
 
 	return el(
 		"li",
 		{class: "row"},
-		el("div", {class: "row-main"}, el("p", {}, el("strong", {}, member.name)), el("p", {class: "meta"}, member.email), actions),
+		el(
+			"div",
+			{class: "row-main"},
+			el(
+				"p",
+				{},
+				el("strong", {}, member.name)
+			),
+			el(
+				"p",
+				{class: "meta"},
+				member.email
+			)
+		),
+		actions
 	);
 }
 
