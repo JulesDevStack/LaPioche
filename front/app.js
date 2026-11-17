@@ -112,14 +112,21 @@ window.addEventListener("hashchange", refresh);
 
 async function loadOverdue() {
 	const overdues = await api.listOverdues();
-	console.log(overdues)
 	$("#overdues-empty").hidden = overdues.length > 0;
 	$("#overdues-list").replaceChildren(...overdues.map(loanCard));
 }
 
 function loanCard(overdue) {
 	const dueAt = new Date(overdue.dueAt);
+	const borrowedAt = new Date(overdue.borrowedAt);
 	const now = new Date();
+
+	const days = Math.floor(
+		(now - borrowedAt) / (1000 * 60 * 60 * 24)
+	);
+
+	console.log({now, borrowedAt})
+	console.log(days);
 
 	const daysBehind = Math.ceil(
 		(now - dueAt) / (1000 * 60 * 60 * 24)
@@ -128,7 +135,10 @@ function loanCard(overdue) {
 	return el("li", {class: "card"},
 		el("h3", {}, overdue.gameName),
 		el("p", {}, "Emprunté par ",
-			el("span", {}, overdue.memberName)
+			el("span", {"style": "font-weight: bold;"}, overdue.memberName)
+		),
+		el("p", {}, "depuis ",
+			el("span", {"style": "font-weight: bold;"}, `${days} jours`)
 		),
 		el("p", {}, "Date de retour prévue : ",
 			el("span", {}, formatDate(dueAt))

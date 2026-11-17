@@ -15,7 +15,8 @@
     color-scheme: light dark;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: dark)
+{
     :root {
         --bg: #171a21;
         --surface: #222733;
@@ -293,13 +294,9 @@ label.check input {
 }
 
 .topbar nav a[href="#overdues"] {
-    position: relative;
 }
 
 .topbar nav a[href="#overdues"] .badge {
-    position: absolute;
-    bottom: -10px;
-    right: -10px;
 }
 
 .badge.ok {
