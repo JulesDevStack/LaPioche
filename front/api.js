@@ -87,12 +87,6 @@ export function translateError(status, reason) {
 async function request(method, path, body) {
 	let response;
 
-	console.table({
-		"method": method,
-		"url": `${API_URL}${path}`,
-		body: body
-	})
-
 	try {
 		response = await fetch(`${API_URL}${path}`, {
 			method,
@@ -110,6 +104,15 @@ async function request(method, path, body) {
 		// Vapor renvoie { error: true, reason: "..." }
 		throw new ApiError(response.status, translateError(response.status, data?.reason));
 	}
+
+	console.table({
+		"method": method,
+		"url": `${API_URL}${path}`,
+		body: body,
+		response: response,
+		data: data
+	})
+
 	return data;
 }
 
@@ -128,5 +131,6 @@ export const api = {
 
 	borrow: (gameID, memberID) => request("POST", "/loans", {gameID, memberID}),
 	updateLoan: (loanID) => request("POST", `/loans/${loanID}/return`),
-	getLoans: (memberID) => request("GET", `/members/${memberID}/loans`)
+	getLoans: (memberID) => request("GET", `/members/${memberID}/loans`),
+	listOverdues: () => request("GET", "/loans/overdue")
 };
