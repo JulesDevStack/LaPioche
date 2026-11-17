@@ -253,6 +253,43 @@ test("returning a game posts the form", async () => {
 	);
 });
 
+test("overdue count is visible before opening the dedicated view", async () => {
+	const overdue = {
+		id: "l1",
+		gameID: catan.id,
+		gameName: catan.title,
+		memberID: camille.id,
+		memberName: camille.name,
+		borrowedAt: new Date(Date.now() - 18 * 86400000).toISOString(),
+		dueAt: new Date(Date.now() - 3 * 86400000 + 12 * 3600000).toISOString(),
+		returnedAt: null,
+	};
+	const app = await mountApp({"GET /games": [], "GET /loans/overdue": [overdue]});
+	const tab = app.$('[data-tab="overdues"]');
+
+	await waitFor(() => app.$("#loan-overdue-count")?.textContent === "1", "le compteur de retards");
+	assertTrue(app.$("#overdues").hidden, "la vue dédiée devrait encore être fermée");
+	assertIncludes(tab.textContent, "Emprunts en retard");
+
+	app.win.location.hash = "#overdues";
+	await waitFor(() => app.$$("#overdues-list .card").length === 1, "la carte de retard");
+	const card = app.$("#overdues-list .card");
+	const dueDate = new Intl.DateTimeFormat("fr-FR", {dateStyle: "long"}).format(new Date(overdue.dueAt));
+	assertIncludes(card.textContent, overdue.gameName);
+	assertIncludes(card.textContent, overdue.memberName);
+	assertIncludes(card.textContent, dueDate);
+	assertIncludes(card.textContent, "3 jour(s) de retard");
+	assertTrue(app.$("#overdues-empty").hidden, "le message vide devrait être masqué");
+});
+
+test("with no overdue loan, the dedicated view explains that it is empty", async () => {
+	const app = await mountApp({"GET /loans/overdue": []}, {hash: "#overdues"});
+	await waitFor(() => !app.$("#overdues-empty").hidden, "le message sans retard");
+	await waitFor(() => app.$("#loan-overdue-count")?.textContent === "0" || !app.$("#loan-overdue-count"), "la mise à jour du compteur");
+	assertEqual(app.$$("#overdues-list .card").length, 0);
+	assertIncludes(app.$("#overdues-empty").textContent, "Aucun emprunt");
+});
+
 // --- Adhérent·es
 
 test("members tab lists the members", async () => {

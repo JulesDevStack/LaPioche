@@ -126,9 +126,6 @@ function loanCard(overdue) {
 		(now - borrowedAt) / (1000 * 60 * 60 * 24)
 	);
 
-	console.log({now, borrowedAt})
-	console.log(days);
-
 	const daysBehind = Math.ceil(
 		(now - dueAt) / (1000 * 60 * 60 * 24)
 	);
