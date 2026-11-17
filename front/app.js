@@ -249,13 +249,11 @@ async function openLoansDialog(member) {
 }
 
 function loanRow(loan) {
-	console.log(loan)
-
 	const status = el("div", {class: "status"});
 
 	if (loan.returnedAt !== undefined) {
 		status.append(el("p", {}, `Rendu le ${formatDate(loan.returnedAt)}`));
-	} else if (loan.dueAt > Date.now()) {
+	} else if (new Date(loan.dueAt).getTime() < Date.now()) {
 		status.append(el("p", {}, "En retard"));
 	} else {
 		status.append(el("p", {}, "En cours"));
