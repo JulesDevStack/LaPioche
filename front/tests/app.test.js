@@ -190,6 +190,69 @@ test("borrowing without any member explains that one must be added first", async
 	assertTrue(!app.$("#borrow-dialog").open, "la boîte d'emprunt ne doit pas s'ouvrir");
 });
 
+test("returning a game posts the form", async () => {
+	const borrowedGame = {...dixit, loanID: "l1"};
+	let games = [borrowedGame];
+
+	const app = await mountApp({
+		"GET /games": () => games,
+		[`POST /loans/${borrowedGame.loanID}/return`]: () => {
+			games = games.map(game => {
+				if (game.id === borrowedGame.id) {
+					return {
+						...game,
+						isAvailable: true,
+						loanID: null
+					};
+				} else {
+					return game;
+				}
+			});
+
+			return [204];
+		}
+	});
+
+	await waitFor(() => app.$$("#games-list .card").length === 1);
+
+	app.click("Rendre", cardOf(app, borrowedGame.title));
+
+	await waitFor(
+		() => app.$("#update-loan-dialog").open,
+		"ouverture de la boîte de retour"
+	);
+
+	app.click("Rendre le jeu", app.$("#update-loan-dialog"));
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "POST" &&
+			call.path === `/loans/${borrowedGame.loanID}/return`
+	), "l'appel POST /loans/:id/return");
+
+	await waitFor(
+		() => !app.$("#update-loan-dialog").open,
+		"la boîte se ferme"
+	);
+
+	await waitFor(() => app.calls.filter(
+		call => call.method === "GET" && call.path === "/games"
+	).length >= 2, "le rechargement de la liste");
+
+	await waitFor(() =>
+		cardOf(app, borrowedGame.title)?.textContent.includes("Disponible")
+	);
+
+	assertTrue(
+		[...cardOf(app, borrowedGame.title).querySelectorAll("button")]
+			.some(button => button.textContent === "Emprunter")
+	);
+
+	await waitFor(() =>
+			app.$("#toasts").textContent.includes("Jeu de nouveau disponible"),
+		"le message de confirmation"
+	);
+});
+
 // --- Adhérent·es
 
 test("members tab lists the members", async () => {
