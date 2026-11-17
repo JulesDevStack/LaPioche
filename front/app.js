@@ -99,9 +99,10 @@ async function refresh() {
 	api.listOverdues().then(res => {
 		if (res.length > 0) {
 			$("#loan-overdue-count").textContent = res.length
+			$("#loan-overdue-count").style.display = "relative"
 		} else {
 			$("#loan-overdue-count").parentNode.textContent = "Aucun emprunt en retard"
-			$("#loan-overdue-count").remove()
+			$("#loan-overdue-count").style.display = "none"
 		}
 	})
 }
