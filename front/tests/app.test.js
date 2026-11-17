@@ -66,12 +66,97 @@ test("a validation error is shown in French and the dialog stays open", async ()
 });
 
 test("delete a game posts the form then reloads the list", async () => {
-	const app = await mountApp({"GET /games": [catan]});
+	let games = [catan];
+
+	const app = await mountApp({
+		"GET /games": () => games,
+		[`DELETE /games/${catan.id}`]: () => {
+			games = games.filter(game => game.id !== catan.id);
+			return [204];
+		}
+	});
+
 	await waitFor(() => app.$$("#games-list .card").length === 1);
+
 	app.click("Supprimer");
 	app.click("Supprimer ce jeu !");
-	await waitFor(() => app.calls.some((call) => call.method === "DELETE" && call.path === `/games/${catan.id}`), "l'appel DELETE /games/:id");
-	assertIncludes(app.$("#games-empty").textContent, "ne contient aucun jeu");
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "DELETE" && call.path === `/games/${catan.id}`
+	), "DELETE /games/:id");
+
+	await waitFor(() => app.calls.filter(
+		call => call.method === "GET" && call.path === "/games"
+	).length >= 2, "rechargement de la liste");
+
+	await waitFor(() => app.$$("#games-list .card").length === 0);
+
+	assertIncludes(
+		app.$("#games-empty").textContent,
+		"ne contient aucun jeu"
+	);
+});
+
+test("updating a game modifies it and reloads the list", async () => {
+	let games = [catan];
+
+	const app = await mountApp({
+		"GET /games": () => games,
+		[`PUT /games/${catan.id}`]: ({body}) => {
+			games = games.map((game) => {
+				if (game.id === catan.id) {
+					return {
+						...game,
+						...body
+					}
+				} else {
+					return game
+				}
+			});
+
+			return [200, games.find(game => game.id === catan.id)];
+		}
+	});
+
+	await waitFor(() => app.$$("#games-list .card").length === 1);
+
+	app.click("Modifier");
+
+	const form = app.$("#game-update-form");
+
+	await waitFor(
+		() => form.elements.title.value === catan.title,
+		"remplissage du formulaire"
+	);
+
+	form.elements.title.value = "Dixit";
+	form.elements.minPlayers.value = "1";
+	form.elements.maxPlayers.value = "2";
+	form.elements.durationMinutes.value = "111";
+
+	form.requestSubmit();
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "PUT" && call.path === `/games/${catan.id}`
+	), "l'appel PUT /games/:id");
+
+	assertEqual(app.calls.find(call => call.method === "PUT").body, {
+		id: catan.id,
+		title: "Dixit",
+		minPlayers: 1,
+		maxPlayers: 2,
+		durationMinutes: 111
+	});
+
+	await waitFor(() => !app.$("#game-dialog").open, "la boîte se ferme");
+
+	await waitFor(() => app.calls.filter(
+		call => call.method === "GET" && call.path === "/games"
+	).length >= 2, "le rechargement de la liste");
+
+	await waitFor(() => app.$$("#games-list .card").length === 1);
+
+	await waitFor(() => app.$("#games-list .card").textContent.includes("Dixit"));
 });
 
 // --- Emprunts
