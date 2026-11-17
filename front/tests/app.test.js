@@ -190,6 +190,69 @@ test("borrowing without any member explains that one must be added first", async
 	assertTrue(!app.$("#borrow-dialog").open, "la boîte d'emprunt ne doit pas s'ouvrir");
 });
 
+test("returning a game posts the form", async () => {
+	const borrowedGame = {...dixit, loanID: "l1"};
+	let games = [borrowedGame];
+
+	const app = await mountApp({
+		"GET /games": () => games,
+		[`POST /loans/${borrowedGame.loanID}/return`]: () => {
+			games = games.map(game => {
+				if (game.id === borrowedGame.id) {
+					return {
+						...game,
+						isAvailable: true,
+						loanID: null
+					};
+				} else {
+					return game;
+				}
+			});
+
+			return [204];
+		}
+	});
+
+	await waitFor(() => app.$$("#games-list .card").length === 1);
+
+	app.click("Rendre", cardOf(app, borrowedGame.title));
+
+	await waitFor(
+		() => app.$("#update-loan-dialog").open,
+		"ouverture de la boîte de retour"
+	);
+
+	app.click("Rendre le jeu", app.$("#update-loan-dialog"));
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "POST" &&
+			call.path === `/loans/${borrowedGame.loanID}/return`
+	), "l'appel POST /loans/:id/return");
+
+	await waitFor(
+		() => !app.$("#update-loan-dialog").open,
+		"la boîte se ferme"
+	);
+
+	await waitFor(() => app.calls.filter(
+		call => call.method === "GET" && call.path === "/games"
+	).length >= 2, "le rechargement de la liste");
+
+	await waitFor(() =>
+		cardOf(app, borrowedGame.title)?.textContent.includes("Disponible")
+	);
+
+	assertTrue(
+		[...cardOf(app, borrowedGame.title).querySelectorAll("button")]
+			.some(button => button.textContent === "Emprunter")
+	);
+
+	await waitFor(() =>
+			app.$("#toasts").textContent.includes("Jeu de nouveau disponible"),
+		"le message de confirmation"
+	);
+});
+
 // --- Adhérent·es
 
 test("members tab lists the members", async () => {
@@ -228,4 +291,98 @@ test("an email already in use is shown in French", async () => {
 	app.$("#member-form").requestSubmit();
 	await waitFor(() => !app.$("#member-dialog .form-error").hidden, "le message d'erreur");
 	assertIncludes(app.$("#member-dialog .form-error").textContent, "utilise déjà cette adresse e-mail");
+});
+
+test("updating a member posts the form then reloads the list", async () => {
+	let members = [camille];
+
+	const app = await mountApp({
+		"GET /members": () => members,
+		[`PUT /members/${camille.id}`]: ({body}) => {
+			members = members.map((member) => {
+				if (member.id === camille.id) {
+					return {
+						...member,
+						...body
+					};
+				} else {
+					return member;
+				}
+			});
+
+			return [200, members.find(member => member.id === camille.id)];
+		}
+	}, {hash: "#members"});
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	app.click("Modifier");
+
+	const form = app.$("#member-update-form");
+
+	await waitFor(
+		() => form.elements.name.value === camille.name,
+		"remplissage du formulaire"
+	);
+
+	form.elements.name.value = "Camille2";
+	form.elements.email.value = camille.email;
+
+	form.requestSubmit();
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "PUT" && call.path === `/members/${camille.id}`
+	), "l'appel PUT /members/:id");
+
+	assertEqual(app.calls.find(call => call.method === "PUT").body, {
+		id: camille.id,
+		name: "Camille2",
+		email: camille.email
+	});
+
+	await waitFor(() => !app.$("#member-update-dialog").open, "la boîte se ferme");
+
+	await waitFor(() => app.calls.filter(
+		call => call.method === "GET" && call.path === "/members"
+	).length >= 2, "le rechargement de la liste");
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	await waitFor(() => app.$("#members-list .row").textContent.includes("Camille2"));
+
+	assertIncludes(app.$("#members-list .row").textContent, "Camille2");
+});
+
+test("delete a member posts the form then reloads the list", async () => {
+	let members = [camille];
+
+	const app = await mountApp({
+		"GET /members": () => members,
+		[`DELETE /members/${camille.id}`]: () => {
+			members = members.filter(member => member.id !== camille.id);
+			return [204];
+		}
+	}, {hash: "#members"});
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	app.click("Supprimer");
+	app.click("Supprimer cet·te adhérent·e !");
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "DELETE" && call.path === `/members/${camille.id}`
+	), "DELETE /members/:id");
+
+	await waitFor(() => app.calls.filter(
+		call => call.method === "GET" && call.path === "/members"
+	).length >= 2, "rechargement de la liste");
+
+	await waitFor(() => app.$$("#members-list .row").length === 0);
+
+	await waitFor(() => !app.$("#members-empty").hidden);
+
+	assertIncludes(
+		app.$("#members-empty").textContent,
+		"Aucun·e adhérent·e pour le moment."
+	);
 });

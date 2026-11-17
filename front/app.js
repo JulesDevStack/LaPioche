@@ -105,8 +105,10 @@ function gameCard(game) {
 	const actions = el("div", {class: "actions"});
 	if (game.isAvailable) {
 		actions.append(button("Emprunter", () => openBorrowDialog(game), "primary"));
-		actions.append(button("Modifier", () => openUpdateDialog(game), "info"));
-		actions.append(button("Supprimer", () => openDeleteDialog(game), "danger"));
+		actions.append(button("Modifier", () => openGameUpdateDialog(game), "info"));
+		actions.append(button("Supprimer", () => openGameDeleteDialog(game), "danger"));
+	} else {
+		actions.append(button("Rendre", () => openReturnLoanDialog(game), "info"));
 	}
 
 	return el(
@@ -142,11 +144,8 @@ bindSubmit(gameDialog, gameForm, (data) =>
 const updateGameDialog = $("#game-update-dialog");
 const updateGameForm = $("#game-update-form");
 
-async function openUpdateDialog(game) {
+async function openGameUpdateDialog(game) {
 	await run(async () => {
-		// $("#delete-dialog-title").textContent = `Supprimer « ${game.title} »`;
-		console.log({game, updateGameForm})
-
 		Object.entries(game).forEach(([key, value]) => {
 			if (updateGameForm.elements[key]) {
 				updateGameForm.elements[key].value = value;
@@ -171,10 +170,10 @@ bindSubmit(updateGameDialog, updateGameForm, (data) =>
 const deleteGameDialog = $("#game-delete-dialog")
 const deleteGameForm = $("#game-delete-form");
 
-async function openDeleteDialog(game) {
+async function openGameDeleteDialog(game) {
 	await run(async () => {
 		deleteGameDialog.dataset.id = game.id
-		$("#delete-dialog-title").textContent = `Supprimer « ${game.title} »`;
+		$("#delete-game-dialog-title").textContent = `Supprimer « ${game.title} »`;
 		showFormError(deleteGameDialog, null);
 		deleteGameDialog.showModal();
 	});
@@ -212,6 +211,25 @@ bindSubmit(borrowDialog, borrowForm, async (data) => {
 	toast(`« ${borrowedGame.title} » emprunté, à rendre avant le ${formatDate(loan.dueAt)}.`);
 });
 
+// UPDATE LOAN
+const updateLoanDialog = $("#update-loan-dialog")
+const updateLoanForm = $("#update-loan-form");
+
+async function openReturnLoanDialog(game) {
+	await run(async () => {
+		updateLoanDialog.dataset.loanid = game.loanID
+		$("#update-loan-dialog-title").textContent = `Retourner « ${game.title} »`;
+		showFormError(updateLoanDialog, null);
+		updateLoanDialog.showModal();
+	});
+}
+bindSubmit(updateLoanDialog, updateLoanForm, (data) => {
+	api.updateLoan(updateLoanDialog.dataset.loanid)
+	.then(() => {
+		toast(`Jeu de nouveau disponible`);
+	})
+});
+
 // --- Adhérent·es -----------------------------------------------------------
 
 async function loadMembers() {
@@ -221,13 +239,22 @@ async function loadMembers() {
 }
 
 function memberRow(member) {
+
+	const actions = el("div", {class: "actions"});
+
+	actions.append(button("Modifier", () => openMemberUpdateDialog(member), "info"));
+	actions.append(button("Supprimer", () => openMemberDeleteDialog(member), "danger"));
+
+
 	return el(
 		"li",
 		{class: "row"},
-		el("div", {class: "row-main"}, el("p", {}, el("strong", {}, member.name)), el("p", {class: "meta"}, member.email)),
+		el("div", {class: "row-main"}, el("p", {}, el("strong", {}, member.name)), el("p", {class: "meta"}, member.email), actions),
 	);
 }
 
+
+// ADD MEMBER
 const memberDialog = $("#member-dialog");
 const memberForm = $("#member-form");
 
@@ -239,6 +266,48 @@ $("#add-member").addEventListener("click", () => {
 
 bindSubmit(memberDialog, memberForm, (data) =>
 	api.createMember({name: data.get("name").trim(), email: data.get("email").trim()}),
+);
+
+// DELETE MEMBER
+const deleteMemberDialog = $("#member-delete-dialog")
+const deleteMemberForm = $("#member-delete-form");
+
+async function openMemberDeleteDialog(member) {
+	await run(async () => {
+		deleteMemberDialog.dataset.id = member.id
+		$("#delete-member-dialog-title").textContent = `Supprimer « ${member.name} »`;
+		showFormError(deleteMemberDialog, null);
+		deleteMemberDialog.showModal();
+	});
+}
+
+bindSubmit(deleteMemberDialog, deleteMemberForm, (data) =>
+	api.deleteMember(deleteMemberDialog.dataset.id)
+);
+
+//UPDATE MEMBER
+const updateMemberDialog = $("#member-update-dialog");
+const updateMemberForm = $("#member-update-form");
+
+async function openMemberUpdateDialog(member) {
+	await run(async () => {
+		Object.entries(member).forEach(([key, value]) => {
+			if (updateMemberForm.elements[key]) {
+				updateMemberForm.elements[key].value = value;
+			}
+		});
+
+		showFormError(updateMemberDialog, null);
+		updateMemberDialog.showModal();
+	});
+}
+bindSubmit(updateMemberDialog, updateMemberForm, (data) => {
+		return api.updateMember({
+			id: data.get("id"),
+			name: data.get("name").trim(),
+			email: data.get("email").trim()
+		})
+	}
 );
 
 refresh();

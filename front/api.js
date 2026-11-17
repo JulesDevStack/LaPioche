@@ -86,6 +86,13 @@ export function translateError(status, reason) {
 
 async function request(method, path, body) {
 	let response;
+
+	console.table({
+		"method": method,
+		"url": `${API_URL}${path}`,
+		body: body
+	})
+
 	try {
 		response = await fetch(`${API_URL}${path}`, {
 			method,
@@ -114,6 +121,11 @@ export const api = {
 
 	listMembers: () => request("GET", "/members"),
 	createMember: (member) => request("POST", "/members", member),
+	deleteMember: (memberID) =>
+		request("DELETE", `/members/${memberID}`)
+	,
+	updateMember: (member) => request("PUT", `/members/${member.id}`, member),
 
 	borrow: (gameID, memberID) => request("POST", "/loans", {gameID, memberID}),
+	updateLoan: (loanID) => request("POST", `/loans/${loanID}/return`)
 };

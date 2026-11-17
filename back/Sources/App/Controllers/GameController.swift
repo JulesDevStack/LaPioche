@@ -12,11 +12,11 @@ struct GameController: RouteCollection {
     }
 
     @Sendable
-    func index(req: Request) async throws -> [GameDTO] {
+    func index(req: Request) async throws -> [GameWithLoanIdDTO] {
         let games = try await Game.query(on: req.db)
             .with(\.$loans)
             .all()
-        return games.map { $0.toDTO() }
+        return games.map { $0.toGameWithLoanIdDTO() }
     }
 
     @Sendable

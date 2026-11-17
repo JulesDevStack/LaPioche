@@ -5,6 +5,7 @@ struct LoanController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         let loans = routes.grouped("loans")
         loans.post(use: create)
+        loans.post(":id", "return", use: update)
     }
 
     @Sendable
@@ -39,5 +40,22 @@ struct LoanController: RouteCollection {
         )
         try await loan.save(on: req.db)
         return try await loan.toDTO().encodeResponse(status: .created, for: req)
+    }
+    
+    @Sendable
+    func update(req: Request) async throws -> Response {
+        guard let loan = try await Loan.find(req.parameters.get("id"), on: req.db) else {
+            throw Abort(.notFound, reason: "Loan not found")
+        }
+        
+        if loan.returnedAt != nil {
+            throw Abort(.conflict, reason: "Loan is already returned")
+        }
+        
+        loan.returnedAt = .now
+        
+        try await loan.update(on: req.db)
+        
+        return Response(status: .ok)
     }
 }

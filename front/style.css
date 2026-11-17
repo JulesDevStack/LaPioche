@@ -133,6 +133,12 @@ button.danger {
     color: var(--late);
 }
 
+button.info {
+    background: transparent;
+    border-color: var(--accent);
+    color: var(--text);
+}
+
 :focus-visible {
     outline: 3px solid var(--accent);
     outline-offset: 2px;
