@@ -107,6 +107,8 @@ function gameCard(game) {
 		actions.append(button("Emprunter", () => openBorrowDialog(game), "primary"));
 		actions.append(button("Modifier", () => openGameUpdateDialog(game), "info"));
 		actions.append(button("Supprimer", () => openGameDeleteDialog(game), "danger"));
+	} else {
+		actions.append(button("Rendre", () => openReturnLoanDialog(game), "info"));
 	}
 
 	return el(
@@ -207,6 +209,25 @@ async function openBorrowDialog(game) {
 bindSubmit(borrowDialog, borrowForm, async (data) => {
 	const loan = await api.borrow(borrowedGame.id, data.get("memberID"));
 	toast(`« ${borrowedGame.title} » emprunté, à rendre avant le ${formatDate(loan.dueAt)}.`);
+});
+
+// UPDATE LOAN
+const updateLoanDialog = $("#update-loan-dialog")
+const updateLoanForm = $("#update-loan-form");
+
+async function openReturnLoanDialog(game) {
+	await run(async () => {
+		updateLoanDialog.dataset.loanid = game.loanID
+		$("#update-loan-dialog-title").textContent = `Retourner « ${game.title} »`;
+		showFormError(updateLoanDialog, null);
+		updateLoanDialog.showModal();
+	});
+}
+bindSubmit(updateLoanDialog, updateLoanForm, (data) => {
+	api.updateLoan(updateLoanDialog.dataset.loanid)
+	.then(() => {
+		toast(`Jeu de nouveau disponible`);
+	})
 });
 
 // --- Adhérent·es -----------------------------------------------------------
