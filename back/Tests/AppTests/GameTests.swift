@@ -2,6 +2,18 @@
 import XCTVapor
 
 final class GameTests: XCTestCase {
+    private func borrow(
+        _ app: Application,
+        gameID: UUID,
+        memberID: UUID,
+        afterResponse: (XCTHTTPResponse) async throws -> Void
+    ) async throws {
+        try await app.test(.POST, "loans", beforeRequest: { req in
+            try req.content.encode(CreateLoanDTO(gameID: gameID, memberID: memberID))
+        }, afterResponse: afterResponse)
+    }
+    
+    
     func testCreateGameReturnsCreated() async throws {
         try await withApp { app in
             try await app.test(.POST, "games", beforeRequest: { req in
@@ -49,6 +61,77 @@ final class GameTests: XCTestCase {
             try await app.test(.GET, "games", afterResponse: { res async throws in
                 XCTAssertEqual(res.status, .ok)
                 XCTAssertEqual(try res.content.decode([GameDTO].self).count, 2)
+            })
+        }
+    }
+    
+    func testUpdateGameReturnsGame() async throws {
+        try await withApp { app in
+            
+            //create game
+            let game = try await createGame(app)
+            let id = try XCTUnwrap(game.id)
+            
+            //try to update
+            try await app.test(.PUT, "games/\(id)", beforeRequest: { req in
+                try req.content.encode(CreateGameDTO(
+                    title: "Updated Title", minPlayers: 3, maxPlayers: 4, durationMinutes: 90
+                ))
+            }, afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .ok)
+                let game = try res.content.decode(GameDTO.self)
+                XCTAssertEqual(game.title, "Updated Title")
+                XCTAssertTrue(game.isAvailable)
+            })
+        }
+    }
+    
+    func testUpdateGameWithZeroDurationMinutesIsRejected() async throws {
+        try await withApp { app in
+            
+            //create game
+            let game = try await createGame(app)
+            let id = try XCTUnwrap(game.id)
+            
+            //try to update
+            try await app.test(.PUT, "games/\(id)", beforeRequest: { req in
+                try req.content.encode(CreateGameDTO(
+                    title: "Updated Title", minPlayers: 3, maxPlayers: 4, durationMinutes: 0
+                ))
+            }, afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .badRequest)
+            })
+        }
+    }
+    
+    func testDeleteGame() async throws {
+        try await withApp { app in
+            
+            //create game
+            let game = try await createGame(app)
+            let id = try XCTUnwrap(game.id)
+            
+            //try to delete
+            try await app.test(.DELETE, "games/\(id)", afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .noContent)
+            })
+        }
+    }
+    
+    func testDeleteGameWithActiveLoan() async throws {
+        try await withApp { app in
+            
+            //create game
+            let game = try await createGame(app)
+            let member = try await createMember(app)
+            let gameID = try XCTUnwrap(game.id)
+            
+            //create loan between member and game
+            try await borrow(app, gameID: gameID, memberID: try XCTUnwrap(member.id)) { _ in }
+            
+            //try to delete
+            try await app.test(.DELETE, "games/\(gameID)", afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .conflict)
             })
         }
     }
