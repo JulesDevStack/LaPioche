@@ -1,5 +1,6 @@
 @testable import App
 import XCTVapor
+import Fluent
 
 final class LoanTests: XCTestCase {
     private func borrow(
@@ -132,6 +133,60 @@ final class LoanTests: XCTestCase {
             
             try await app.test(.POST, "loans/\(loanID!)/return", afterResponse: { res async throws in
                 XCTAssertEqual(res.status, .conflict)
+            })
+        }
+    }
+    
+    func testOverdueReturnsLateLoan() async throws {
+        try await withApp { app in
+            let game = try await createGame(app)
+            let member = try await createMember(app)
+            let gameID = try XCTUnwrap(game.id)
+            let memberID = try XCTUnwrap(member.id)
+
+            try await borrow(app, gameID: gameID, memberID: memberID) { res in
+                XCTAssertEqual(res.status, .created)
+            }
+
+            let result = try await Loan.query(on: app.db)
+                .filter(\Loan.$game.$id == gameID)
+                .first()
+
+            let loan = try XCTUnwrap(result)
+
+            loan.dueAt = Date().addingTimeInterval(-86400)
+
+            try await loan.save(on: app.db)
+
+            try await app.test(.GET, "loans/overdue", afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .ok)
+
+                let loans = try res.content.decode([LoanWithGameWithMemberDTO].self)
+
+                XCTAssertEqual(loans.count, 1)
+                XCTAssertEqual(loans.first?.gameName, game.title)
+                XCTAssertEqual(loans.first?.memberName, member.name)
+            })
+        }
+    }
+    
+    func testOverdueExcludesCurrentLoan() async throws {
+        try await withApp { app in
+            let game = try await createGame(app)
+            let member = try await createMember(app)
+            let gameID = try XCTUnwrap(game.id)
+            let memberID = try XCTUnwrap(member.id)
+
+            try await borrow(app, gameID: gameID, memberID: memberID) { res in
+                XCTAssertEqual(res.status, .created)
+            }
+
+            try await app.test(.GET, "loans/overdue", afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .ok)
+
+                let loans = try res.content.decode([LoanWithGameWithMemberDTO].self)
+
+                XCTAssertTrue(loans.isEmpty)
             })
         }
     }

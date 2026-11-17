@@ -20,7 +20,6 @@ function el(tag, props = {}, ...children) {
 	node.append(...children);
 	return node;
 }
-
 function button(label, onClick, className = "") {
 	return el("button", {type: "button", class: className, onclick: onClick}, label);
 }
@@ -69,7 +68,7 @@ function bindSubmit(dialog, form, handler) {
 
 // --- Onglets ---------------------------------------------------------------
 
-const tabs = ["games", "members"];
+const tabs = ["games", "members", "overdues"];
 
 function currentTab() {
 	const name = location.hash.slice(1);
@@ -82,10 +81,68 @@ async function refresh() {
 		$(`#${name}`).hidden = name !== tab;
 		$(`[data-tab="${name}"]`).toggleAttribute("aria-current", name === tab);
 	}
-	await run(tab === "games" ? loadGames : loadMembers);
+	switch (tab) {
+		case "games":
+			await run(loadGames)
+			break;
+		case "members":
+			await run(loadMembers)
+			break;
+		case "overdues":
+			await run(loadOverdue)
+			break;
+		default:
+			await run(loadGames)
+			break;
+	}
+
+	api.listOverdues().then(res => {
+		if (res.length > 0) {
+			$("#loan-overdue-count").textContent = res.length
+		} else {
+			$("#loan-overdue-count").parentNode.textContent = "Aucun emprunt en retard"
+			$("#loan-overdue-count").remove()
+		}
+	})
 }
 
 window.addEventListener("hashchange", refresh);
+
+// --- Overdue ------------------------------------------------------------------
+
+async function loadOverdue() {
+	const overdues = await api.listOverdues();
+	console.log(overdues)
+	$("#overdues-empty").hidden = overdues.length > 0;
+	$("#overdues-list").replaceChildren(...overdues.map(loanCard));
+}
+
+function loanCard(overdue) {
+	const dueAt = new Date(overdue.dueAt);
+	const now = new Date();
+
+	const daysBehind = Math.ceil(
+		(now - dueAt) / (1000 * 60 * 60 * 24)
+	);
+
+	return el("li", {class: "card"},
+		el("h3", {}, overdue.gameName),
+		el("p", {}, "Emprunté par ",
+			el("span", {}, overdue.memberName)
+		),
+		el("p", {}, "Date de retour prévue : ",
+			el("span", {}, formatDate(dueAt))
+		),
+		...(daysBehind > 0 && !overdue.returnedAt ? [
+			el("p", {
+				class: daysBehind <= 5
+					? "before5dayBehind"
+					: "more5dayBehind"
+			}, `${daysBehind} jour(s) de retard`)
+		] : [])
+	);
+}
+
 
 // --- Jeux ------------------------------------------------------------------
 
@@ -156,6 +213,7 @@ async function openGameUpdateDialog(game) {
 		updateGameDialog.showModal();
 	});
 }
+
 bindSubmit(updateGameDialog, updateGameForm, (data) =>
 	api.updateGame({
 		id: data.get("id"),
@@ -178,6 +236,7 @@ async function openGameDeleteDialog(game) {
 		deleteGameDialog.showModal();
 	});
 }
+
 bindSubmit(deleteGameDialog, deleteGameForm, (data) =>
 	api.deleteGame(deleteGameDialog.dataset.id)
 );
@@ -223,11 +282,12 @@ async function openReturnLoanDialog(game) {
 		updateLoanDialog.showModal();
 	});
 }
+
 bindSubmit(updateLoanDialog, updateLoanForm, (data) => {
 	return api.updateLoan(updateLoanDialog.dataset.loanid)
-	.then(() => {
-		toast(`Jeu de nouveau disponible`);
-	})
+		.then(() => {
+			toast(`Jeu de nouveau disponible`);
+		})
 });
 
 
@@ -268,17 +328,17 @@ function loanRow(loan) {
 			el(
 				"p",
 				{},
-				"Jeu : "+loan.gameName
+				"Jeu : " + loan.gameName
 			),
 			el(
 				"p",
 				{},
-				"Emprunté le "+formatDate(loan.borrowedAt)
+				"Emprunté le " + formatDate(loan.borrowedAt)
 			),
 			el(
 				"p",
 				{},
-				"A rendre le "+formatDate(loan.dueAt)
+				"A rendre le " + formatDate(loan.dueAt)
 			),
 			status
 		)
@@ -370,6 +430,7 @@ async function openMemberUpdateDialog(member) {
 		updateMemberDialog.showModal();
 	});
 }
+
 bindSubmit(updateMemberDialog, updateMemberForm, (data) => {
 		return api.updateMember({
 			id: data.get("id"),

@@ -111,7 +111,7 @@ struct MemberController: RouteCollection {
             throw Abort(.badRequest, reason: "Invalid member id")
         }
         
-        guard let member = try await Member.find(memberID, on: req.db) else {
+        guard let _ = try await Member.find(memberID, on: req.db) else {
             throw Abort(.notFound, reason: "Member not found")
         }
 

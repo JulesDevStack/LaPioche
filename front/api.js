@@ -128,5 +128,6 @@ export const api = {
 
 	borrow: (gameID, memberID) => request("POST", "/loans", {gameID, memberID}),
 	updateLoan: (loanID) => request("POST", `/loans/${loanID}/return`),
-	getLoans: (memberID) => request("GET", `/members/${memberID}/loans`)
+	getLoans: (memberID) => request("GET", `/members/${memberID}/loans`),
+	listOverdues: () => request("GET", "/loans/overdue")
 };

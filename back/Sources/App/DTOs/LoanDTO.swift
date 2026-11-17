@@ -19,6 +19,17 @@ struct LoanWithGameDTO: Content {
     let gameName: String
 }
 
+struct LoanWithGameWithMemberDTO: Content {
+    let id: UUID?
+    let gameID: UUID
+    let memberID: UUID
+    let borrowedAt: Date
+    let dueAt: Date
+    let returnedAt: Date?
+    let gameName: String
+    let memberName: String
+}
+
 extension Loan {
     func toDTO() -> LoanDTO {
         LoanDTO(
@@ -41,6 +52,19 @@ extension Loan {
             dueAt: dueAt,
             returnedAt: returnedAt,
             gameName: game.title
+        )
+    }
+    
+    func toLoanWithGameWithMemberDTO() -> LoanWithGameWithMemberDTO {
+        LoanWithGameWithMemberDTO(
+            id: id,
+            gameID: $game.id,
+            memberID: $member.id,
+            borrowedAt: borrowedAt,
+            dueAt: dueAt,
+            returnedAt: returnedAt,
+            gameName: game.title,
+            memberName: member.name
         )
     }
 }

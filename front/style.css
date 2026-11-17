@@ -218,6 +218,20 @@ label.check input {
     gap: 8px;
 }
 
+.card p {
+    margin: 0px;
+}
+
+.card .more5dayBehind {
+    color: #d66d6d;
+    font-weight: bold;
+}
+
+.card .before5dayBehind {
+    color: #cd854f;
+    font-weight: bold;
+}
+
 .meta {
     margin: 0;
     color: var(--muted);
@@ -271,6 +285,21 @@ label.check input {
     border-radius: 999px;
     font-size: 0.8rem;
     white-space: nowrap;
+}
+
+.badge.badge-danger {
+    background-color: #d66d6d;
+    color: var(--text);
+}
+
+.topbar nav a[href="#overdues"] {
+    position: relative;
+}
+
+.topbar nav a[href="#overdues"] .badge {
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
 }
 
 .badge.ok {
