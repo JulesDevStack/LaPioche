@@ -8,6 +8,7 @@ struct MemberController: RouteCollection {
         members.post(use: create)
         members.get(":memberID", use: show)
         members.put(":memberID", use: edit)
+        members.delete(":memberID", use: delete)
     }
 
     @Sendable
@@ -78,5 +79,28 @@ struct MemberController: RouteCollection {
         member = dto.apply(member: member)
         try await member.update(on: req.db)
         return member.toDTO()
+    }
+    
+    @Sendable
+    func delete(req: Request) async throws -> Response {
+        guard let memberID = req.parameters.get("memberID", as: UUID.self) else {
+            throw Abort(.badRequest, reason: "Invalid member id")
+        }
+        
+        //get member from id
+        guard let member = try await Member.query(on: req.db)
+            .filter(\.$id == memberID)
+            .with(\.$loans)
+            .first()
+        else {
+            throw Abort(.notFound, reason: "Member not found")
+        }
+        
+        if !member.loans.isEmpty {
+            throw Abort(.conflict, reason: "Member has \(member.loans.count) loans, can't be deleted")
+        }
+        
+        try await member.delete(on: req.db)
+        return Response(status: .noContent)
     }
 }

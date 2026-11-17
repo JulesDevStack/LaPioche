@@ -2,6 +2,17 @@
 import XCTVapor
 
 final class MemberTests: XCTestCase {
+    private func borrow(
+        _ app: Application,
+        gameID: UUID,
+        memberID: UUID,
+        afterResponse: (XCTHTTPResponse) async throws -> Void
+    ) async throws {
+        try await app.test(.POST, "loans", beforeRequest: { req in
+            try req.content.encode(CreateLoanDTO(gameID: gameID, memberID: memberID))
+        }, afterResponse: afterResponse)
+    }
+    
     func testCreateMemberReturnsCreated() async throws {
         try await withApp { app in
             try await app.test(.POST, "members", beforeRequest: { req in
@@ -58,6 +69,35 @@ final class MemberTests: XCTestCase {
             try await app.test(.PUT, "members/\(member1ID)", beforeRequest: { req in
                 try req.content.encode(UpdateMemberDTO(name: "Camille", email: "autre@example.com"))
             }, afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .conflict)
+            })
+        }
+    }
+    
+    func testDeleteMemberReturnNoContent() async throws {
+        try await withApp { app in
+            let member = try await createMember(app)
+            let id = try XCTUnwrap(member.id)
+
+            try await app.test(.DELETE, "members/\(id)", afterResponse: { res async throws in
+                XCTAssertEqual(res.status, .noContent)
+            })
+        }
+    }
+    
+    func testDeleteMemberWithLoansIsRejected() async throws {
+        try await withApp { app in
+            let member = try await createMember(app)
+            let game = try await createGame(app)
+
+            let memberID = try XCTUnwrap(member.id)
+            let gameID = try XCTUnwrap(game.id)
+
+            try await borrow(app, gameID: gameID, memberID: memberID) { res in
+                XCTAssertEqual(res.status, .created)
+            }
+
+            try await app.test(.DELETE, "members/\(memberID)", afterResponse: { res async throws in
                 XCTAssertEqual(res.status, .conflict)
             })
         }
