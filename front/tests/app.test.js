@@ -229,3 +229,97 @@ test("an email already in use is shown in French", async () => {
 	await waitFor(() => !app.$("#member-dialog .form-error").hidden, "le message d'erreur");
 	assertIncludes(app.$("#member-dialog .form-error").textContent, "utilise déjà cette adresse e-mail");
 });
+
+test("updating a member posts the form then reloads the list", async () => {
+	let members = [camille];
+
+	const app = await mountApp({
+		"GET /members": () => members,
+		[`PUT /members/${camille.id}`]: ({body}) => {
+			members = members.map((member) => {
+				if (member.id === camille.id) {
+					return {
+						...member,
+						...body
+					};
+				} else {
+					return member;
+				}
+			});
+
+			return [200, members.find(member => member.id === camille.id)];
+		}
+	}, {hash: "#members"});
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	app.click("Modifier");
+
+	const form = app.$("#member-update-form");
+
+	await waitFor(
+		() => form.elements.name.value === camille.name,
+		"remplissage du formulaire"
+	);
+
+	form.elements.name.value = "Camille2";
+	form.elements.email.value = camille.email;
+
+	form.requestSubmit();
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "PUT" && call.path === `/members/${camille.id}`
+	), "l'appel PUT /members/:id");
+
+	assertEqual(app.calls.find(call => call.method === "PUT").body, {
+		id: camille.id,
+		name: "Camille2",
+		email: camille.email
+	});
+
+	await waitFor(() => !app.$("#member-update-dialog").open, "la boîte se ferme");
+
+	await waitFor(() => app.calls.filter(
+		call => call.method === "GET" && call.path === "/members"
+	).length >= 2, "le rechargement de la liste");
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	await waitFor(() => app.$("#members-list .row").textContent.includes("Camille2"));
+
+	assertIncludes(app.$("#members-list .row").textContent, "Camille2");
+});
+
+test("delete a member posts the form then reloads the list", async () => {
+	let members = [camille];
+
+	const app = await mountApp({
+		"GET /members": () => members,
+		[`DELETE /members/${camille.id}`]: () => {
+			members = members.filter(member => member.id !== camille.id);
+			return [204];
+		}
+	}, {hash: "#members"});
+
+	await waitFor(() => app.$$("#members-list .row").length === 1);
+
+	app.click("Supprimer");
+	app.click("Supprimer cet·te adhérent·e !");
+
+	await waitFor(() => app.calls.some(
+		call => call.method === "DELETE" && call.path === `/members/${camille.id}`
+	), "DELETE /members/:id");
+
+	await waitFor(() => app.calls.filter(
+		call => call.method === "GET" && call.path === "/members"
+	).length >= 2, "rechargement de la liste");
+
+	await waitFor(() => app.$$("#members-list .row").length === 0);
+
+	await waitFor(() => !app.$("#members-empty").hidden);
+
+	assertIncludes(
+		app.$("#members-empty").textContent,
+		"Aucun·e adhérent·e pour le moment."
+	);
+});

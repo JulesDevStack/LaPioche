@@ -269,7 +269,6 @@ const updateMemberDialog = $("#member-update-dialog");
 const updateMemberForm = $("#member-update-form");
 
 async function openMemberUpdateDialog(member) {
-	console.log(member)
 	await run(async () => {
 		Object.entries(member).forEach(([key, value]) => {
 			if (updateMemberForm.elements[key]) {
@@ -282,7 +281,6 @@ async function openMemberUpdateDialog(member) {
 	});
 }
 bindSubmit(updateMemberDialog, updateMemberForm, (data) => {
-	console.log("couciu")
 		return api.updateMember({
 			id: data.get("id"),
 			name: data.get("name").trim(),
